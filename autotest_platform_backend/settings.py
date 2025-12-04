@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-77r__$3c$q+zhqo2=p)c)q5+weyjelw0&n^&u9=1)6o#j3@mq7
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',        # 引入 DRF
+    'rest_framework.authtoken',  # 引入 Token 认证
     'corsheaders',           # 引入跨域支持
     'core',                  # 引入核心应用
 ]
@@ -47,21 +48,35 @@ INSTALLED_APPS = [
 CORS_ALLOW_ALL_ORIGINS = True
 
 # 允许 CSRF 检查通过的来源列表
-# 这里的 'localhost:8081' 是您的前端开发服务器地址
+# 更新为正确的前端端口8082
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8081',
-    'http://192.168.0.148:8081',
+    'http://localhost:8082',
+    'http://127.0.0.1:8082',
+    'http://192.168.0.148:8082',
+    'http://localhost:8084',
+    'http://127.0.0.1:8084',
+    'http://192.168.0.148:8084',
 ]
+
+# 自定义CSRF豁免中间件
+class DisableCSRFMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        setattr(request, '_dont_enforce_csrf_checks', True)
+        response = self.get_response(request)
+        return response
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'autotest_platform_backend.settings.DisableCSRFMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -87,13 +102,33 @@ WSGI_APPLICATION = 'autotest_platform_backend.wsgi.application'
 
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
+    'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
-    ),
+    ],
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
-    )
+    ),
+    # 允许跨域请求携带cookie
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ]
 }
+
+# Session和CSRF设置
+SESSION_COOKIE_SECURE = False  # 开发环境设为False
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = False  # 开发环境设为False
+CSRF_COOKIE_SAMESITE = 'Lax'
+# 完全禁用CSRF保护
+USE_TZ = True
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_HTTPONLY = False
+
+# 允许跨域请求携带凭证
+CORS_ALLOW_CREDENTIALS = True
+
+# 为所有请求禁用CSRF验证
+# CSRF_FAILURE_VIEW = 'django.views.defaults.csrf_failure'  # 注释掉这行
 
 
 # Database
